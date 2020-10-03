@@ -46,17 +46,127 @@ def generate_edge_image(image, edge_width=1):
         min_image = image.filter(ImageFilter.MinFilter(edge_width))
         return ne_image(max_image, min_image)
     
+class DefaultMapData():
+    def __init__(self):
+        # sets
+        self.water_provinces = set()
+        self.impassable_provinces = set()
+        
+    def parse_from_file(self):
+        map_folder = r"C:\Program Files (x86)\Steam\steamapps\common\Crusader Kings III\game\map_data\\"
+        file = open(map_folder + "default.map")
+        lines = file.readlines()
+        for line in lines:
+            content = line
+            content = content.split('#')[0]
+            content = content.lstrip()
+            content = content.rstrip()
+            
+            if len(content) == 0:
+                continue
+            key_value = content.split(' = ')
+            if len(key_value) != 2:
+                print("Failed to parse this line: " + line)
+                raise Exception()
+            key = key_value[0]
+            value = key_value[1]
+
+            if key == "definitions":
+                continue
+            if key == "provinces":
+                continue
+            if key == "rivers":
+                continue
+            if key == "topology":
+                continue
+            if key == "continent":
+                continue
+            if key == "adjacencies":
+                continue
+            if key == "island_region":
+                continue
+            if key == "geographical_region":
+                continue
+            if key == "seasons":
+                continue
+
+            province_type = ""
+
+            if key == "sea_zones":
+                province_type = "water"
+            if key == "river_provinces":
+                province_type = "water"
+            if key == "lakes":
+                province_type = "water"
+            if key == "impassable_seas":
+                province_type = "water"
+            if key == "impassable_mountains":
+                province_type = "impassable"
+            if province_type == "":
+                print("Failed to parse this line: " + line)
+                raise Exception()
+
+            province_ids = []
+            if value.startswith("RANGE"):
+                parse_value = value
+                parse_value = parse_value[8:]
+                parse_value = parse_value.rstrip(" }")
+                province_id_strings = parse_value.split(' ')
+                if len(province_id_strings) != 2:
+                    print("Failed to parse this line: " + line)
+                    print("Expected two values for range.")
+                    print("Instead, only got " + str(len(province_id_strings)))
+                    print(str(province_id_strings))
+                    raise Exception()
+                range_start = int(province_id_strings[0])
+                range_end = int(province_id_strings[1])
+                if range_end <= range_start:
+                    print("Failed to parse this line: " + line)
+                    print("Range end is meant to be greater than range start.")
+                    print("Range start: " + str(range_start))
+                    print("Range end: " + str(range_end))
+                    raise Exception()
+                for i in range(range_start, range_end + 1, 1):
+                    province_ids.append(i)
+            elif value.startswith("LIST"):
+                parse_value = value
+                parse_value = parse_value[7:]
+                parse_value = parse_value.rstrip(" }")
+                province_id_strings = parse_value.split(' ')
+                for province_id_string in province_id_strings:
+                    province_ids.append(int(province_id_string))
+            else:
+                print("Failed to parse this line: " + line)
+                raise Exception()
+
+            for province_id in province_ids:
+                if province_type == "water":
+                    self.water_provinces.add(province_id)
+                elif province_type == "impassable":
+                    self.impassable_provinces.add(province_id)
+                else:
+                    print("Incorrect value: " + value)
+                    raise Exception()
+
+        print("Finished parsing default.map")
+        print("Found " + str(len(self.water_provinces) + len(self.impassable_provinces)) + " water and impassable provinces")
 
 class ProvinceMap():
+    
+    def parse_default_file(self):
+        default_data = DefaultMapData()
+        default_data.parse_from_file()
+        return default_data
+
     def __init__(self, game, flip_y = False):
         """Creates a province map using the base game directory specified, defaulting to the one in pyradox.config."""
         self.game = game
         
         basedir = pyradox.get_game_directory(game)
         
-        provinces_bmp = os.path.join(basedir, 'map', 'provinces.bmp')
-        definition_csv = os.path.join(basedir, 'map', 'definition.csv')
-        default_map = os.path.join(basedir, 'map', 'default.map')
+        provinces_bmp = os.path.join(basedir, 'game', 'map_data', 'provinces.png')
+        definition_csv = os.path.join(basedir, 'game', 'map_data', 'definition.csv')
+        default_map = os.path.join(basedir, 'game', 'map_data', 'default.map')
         
         self.province_image = Image.open(provinces_bmp)
 
@@ -68,15 +178,23 @@ class ProvinceMap():
             self.province_color_by_id = {}
             self.province_id_by_color = {}
             self.water_provinces = set()
+            self.impassable_provinces = set()
             self._adjacency = {} # lazy evaluation
 
-            water_keys = ('sea_starts', 'lakes')
-            default_tree = pyradox.parse_file(default_map, verbose=False)
-            max_province = default_tree['max_provinces']
+            default_map_data = self.parse_default_file()
             
-            for key in water_keys:
-                for province_id in default_tree.find_all(key):
-                    self.water_provinces.add(province_id)
+            for water_province in default_map_data.water_provinces:
+                self.water_provinces.add(water_province)
+                
+            for impassable_province in default_map_data.impassable_provinces:
+                self.impassable_provinces.add(impassable_province)
+            #water_keys = ('sea_starts', 'lakes')
+            #default_tree = pyradox.parse_file(default_map, verbose=False)
+            #max_province = default_tree['max_provinces']
+            
+            #for key in water_keys:
+            #    for province_id in default_tree.find_all(key):
+            #        self.water_provinces.add(province_id)
             
             province_count = 0
             for row in csv_reader:
@@ -174,6 +292,9 @@ class ProvinceMap():
     def is_water_province(self, province_id):
         """ Return true iff province is a water province """
         return province_id in self.water_provinces
+        
+    def is_impassable_province(self, province_id):
+        return province_id in self.impassable_provinces
 
     def get_adjacent(self, province_id):
         """ Returns a list of adjacent province_ids. """

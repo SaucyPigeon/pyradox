@@ -14,6 +14,7 @@ game_encodings = {
     'HoI4' : ['utf_8_sig', 'cp1252'],
     'HoI4_beta' : ['utf_8_sig', 'cp1252'],
     'Stellaris' : ['utf_8_sig', 'cp1252'],
+    'CK3' : ['utf_8_sig', 'cp1252']
 }
         
 def readlines(filename, encodings):

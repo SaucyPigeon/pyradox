@@ -20,6 +20,7 @@ game_suffixes = {
     'HoI4' : r'Hearts of Iron IV',
     'HoI4_beta' : r'Hearts of Iron IV BETA', 
     'Stellaris' : r'Stellaris',
+    'CK3' : r'Crusader Kings III'
 }
 
 game_directories = {}
