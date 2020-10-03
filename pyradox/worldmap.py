@@ -49,7 +49,11 @@ def generate_edge_image(image, edge_width=1):
 class DefaultMapData():
     def __init__(self):
         # sets
+        # (sea)
         self.water_provinces = set()
+        self.river_provinces = set()
+        self.lake_provinces = set()
+        self.impassable_sea_provinces = set()
         self.impassable_provinces = set()
         
     def parse_from_file(self):
@@ -93,13 +97,13 @@ class DefaultMapData():
             province_type = ""
 
             if key == "sea_zones":
-                province_type = "water"
+                province_type = "sea"
             if key == "river_provinces":
-                province_type = "water"
+                province_type = "river"
             if key == "lakes":
-                province_type = "water"
+                province_type = "lake"
             if key == "impassable_seas":
-                province_type = "water"
+                province_type = "impassable sea"
             if key == "impassable_mountains":
                 province_type = "impassable"
             if province_type == "":
@@ -140,8 +144,14 @@ class DefaultMapData():
                 raise Exception()
 
             for province_id in province_ids:
-                if province_type == "water":
+                if province_type == "sea":
                     self.water_provinces.add(province_id)
+                elif province_type == "river":
+                    self.river_provinces.add(province_id)
+                elif province_type == "lake":
+                    self.lake_provinces.add(province_id)
+                elif province_type == "impassable sea":
+                    self.impassable_sea_provinces.add(province_id)
                 elif province_type == "impassable":
                     self.impassable_provinces.add(province_id)
                 else:
@@ -149,7 +159,7 @@ class DefaultMapData():
                     raise Exception()
 
         print("Finished parsing default.map")
-        print("Found " + str(len(self.water_provinces) + len(self.impassable_provinces)) + " water and impassable provinces")
+        print("Found " + str(len(self.water_provinces) + len(self.impassable_provinces)+ len(self.river_provinces)+ len(self.lake_provinces)+ len(self.impassable_sea_provinces)) + " water and impassable provinces")
 
 class ProvinceMap():
     
@@ -179,6 +189,9 @@ class ProvinceMap():
             self.province_id_by_color = {}
             self.water_provinces = set()
             self.impassable_provinces = set()
+            self.river_provinces = set()
+            self.lake_provinces = set()
+            self.impassable_sea_provinces = set()
             self._adjacency = {} # lazy evaluation
 
             default_map_data = self.parse_default_file()
@@ -188,6 +201,15 @@ class ProvinceMap():
                 
             for impassable_province in default_map_data.impassable_provinces:
                 self.impassable_provinces.add(impassable_province)
+                
+            for river_province in default_map_data.river_provinces:
+                self.river_provinces.add(river_province)
+                
+            for impassable_province in default_map_data.lake_provinces:
+                self.lake_provinces.add(impassable_province)
+                
+            for impassable_province in default_map_data.impassable_sea_provinces:
+                self.impassable_sea_provinces.add(impassable_province)
             #water_keys = ('sea_starts', 'lakes')
             #default_tree = pyradox.parse_file(default_map, verbose=False)
             #max_province = default_tree['max_provinces']
@@ -291,8 +313,9 @@ class ProvinceMap():
                 
     def is_water_province(self, province_id):
         """ Return true iff province is a water province """
-        return province_id in self.water_provinces
+        return province_id in self.water_provinces or province_id in self.impassable_sea_provinces or province_id in self.lake_provinces or province_id in self.river_provinces
         
+    """ Land impassable (e.g. mountains) """
     def is_impassable_province(self, province_id):
         return province_id in self.impassable_provinces
 
